@@ -2,42 +2,38 @@
 
 import { generateObject } from "ai";
 import { google } from "@ai-sdk/google";
-import { z } from "zod";
-
 import { db } from "@/firebase/admin";
-import { feedbackSchema } from "@/constants";
+import {feedbackSchema} from "@/constants";
 
-// Create Feedback
 export async function createFeedback(params: CreateFeedbackParams) {
     const { interviewId, userId, transcript, feedbackId } = params;
 
     try {
         const formattedTranscript = transcript
-            .map(
-                (sentence: { role: string; content: string }) =>
-                    `- ${sentence.role}: ${sentence.content}\n`
-            )
+            .map((sentence: { role: string; content: string }) => `- ${sentence.role}: ${sentence.content}\n`)
             .join("");
 
         const { object } = await generateObject({
             model: google("gemini-2.0-flash-001"),
             schema: feedbackSchema,
             prompt: `
-You are an AI interviewer analyzing a mock interview. 
-Your task is to evaluate the candidate based on structured categories. 
-Be strict and detailed. If there are mistakes or areas for improvement, point them out. 
+        You are an AI interviewer analyzing a mock interview. 
+        Evaluate the candidate based on structured categories. 
+        Be critical and point out weaknesses as well as strengths.
+        
+        Transcript:
+        ${formattedTranscript}
 
-Transcript:
-${formattedTranscript}
-
-Return a JSON object matching the schema exactly. Do NOT include extra text.
-Scores must be integers between 0 and 100.
+        Please score the candidate from 0 to 100 in the following areas:
+        - Communication Skills
+        - Technical Knowledge
+        - Problem-Solving
+        - Cultural & Role Fit
+        - Confidence & Clarity
       `,
-            system:
-                "You are a professional interviewer. Respond ONLY with valid JSON matching the schema.",
+            system: "You are a professional interviewer analyzing a mock interview. Always return structured feedback based only on the schema.",
         });
 
-        // Construct feedback object for Firestore
         const feedback = {
             interviewId,
             userId,
@@ -49,29 +45,24 @@ Scores must be integers between 0 and 100.
             createdAt: new Date().toISOString(),
         };
 
-        let feedbackRef;
-        if (feedbackId) {
-            feedbackRef = db.collection("feedback").doc(feedbackId);
-        } else {
-            feedbackRef = db.collection("feedback").doc();
-        }
+        const feedbackRef = feedbackId
+            ? db.collection("feedback").doc(feedbackId)
+            : db.collection("feedback").doc();
 
         await feedbackRef.set(feedback);
 
-        return { success: true, feedbackId: feedbackRef.id, feedback };
-    } catch (error) {
+        return { success: true, feedbackId: feedbackRef.id };
+    } catch (error: any) {
         console.error("Error saving feedback:", error);
-        return { success: false, error: String(error) };
+        return { success: false, error: error?.message || JSON.stringify(error) };
     }
 }
 
-// Get Interview by ID
 export async function getInterviewById(id: string): Promise<Interview | null> {
     const interview = await db.collection("interviews").doc(id).get();
-    return interview.exists ? (interview.data() as Interview) : null;
+    return interview.data() as Interview | null;
 }
 
-// Get Feedback by Interview ID
 export async function getFeedbackByInterviewId(
     params: GetFeedbackByInterviewIdParams
 ): Promise<Feedback | null> {
@@ -90,7 +81,6 @@ export async function getFeedbackByInterviewId(
     return { id: feedbackDoc.id, ...feedbackDoc.data() } as Feedback;
 }
 
-// Get Latest Interviews
 export async function getLatestInterviews(
     params: GetLatestInterviewsParams
 ): Promise<Interview[] | null> {
@@ -110,7 +100,6 @@ export async function getLatestInterviews(
     })) as Interview[];
 }
 
-// Get Interviews by User ID
 export async function getInterviewsByUserId(
     userId: string
 ): Promise<Interview[] | null> {

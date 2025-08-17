@@ -155,6 +155,7 @@ End the conversation on a polite and positive note.
     },
 };
 
+
 export const feedbackSchema = z.object({
     totalScore: z.number(),
     categoryScores: z.array(
@@ -174,6 +175,7 @@ export const feedbackSchema = z.object({
     areasForImprovement: z.array(z.string()),
     finalAssessment: z.string(),
 });
+
 
 export const interviewCovers = [
     "/adobe.png",
