@@ -1,4 +1,6 @@
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
@@ -9,6 +11,10 @@ import {
 } from "@/lib/actions/general.action";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/actions/auth.action";
+
+// extend plugins
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const Feedback = async ({ params }: RouteParams) => {
     const { id } = await params;
@@ -50,7 +56,9 @@ const Feedback = async ({ params }: RouteParams) => {
                         <Image src="/calendar.svg" width={22} height={22} alt="calendar" />
                         <p>
                             {feedback?.createdAt
-                                ? dayjs(feedback.createdAt).format("MMM D, YYYY h:mm A")
+                                ? dayjs(feedback.createdAt)
+                                    .tz("Asia/Kolkata") // force IST
+                                    .format("MMM D, YYYY h:mm A")
                                 : "N/A"}
                         </p>
                     </div>
